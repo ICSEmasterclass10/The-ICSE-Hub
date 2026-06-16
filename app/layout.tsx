@@ -14,11 +14,23 @@ const cinzel = Cinzel({
   weight: ['400', '500', '600', '700'],
 })
 
+// REPLACED ONLY THIS METADATA BLOCK FOR SEO & GOOGLE VERIFICATION
 export const metadata: Metadata = {
-  title: 'The ICSE Hub | ICSE Class 10 Dashboard',
+  title: 'The ICSE Hub | ICSE Class 10 Board Exam Dashboard & Notes',
   description:
-    'The ICSE Hub by ICSE MasterClass — a premium productivity dashboard for ICSE Class 10 students featuring a focus timer, notes vault, and chapter-wise lecture theatre.',
+    'Access free ICSE Class 10 chapter-wise video lectures, high-performance physics mnemonics, structured board notes, and automated focus tools designed for the 2026-27 batch by ICSE MasterClass.',
+  keywords: ['ICSE Class 10', 'ICSE Board Notes', 'ICSE Physics One Shot', 'ICSE MasterClass', 'ICSE Hub', 'Class 10 Board Prep', 'Free ICSE Notes'],
   generator: 'v0.app',
+  robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+  verification: {
+    google: 'XoBnGavN1YlsIka6AgjgXplREYGYS-0qIOlX94m7MS0',
+  },
+  openGraph: {
+    title: 'The ICSE Hub | Complete Class 10 Study Dashboard',
+    description: 'Free chapter-wise lectures, premium board notes, and focus utilities tailored strictly for the ICSE Class 10 curriculum.',
+    type: 'website',
+    siteName: 'The ICSE Hub by ICSE MasterClass',
+  },
   icons: {
     icon: [
       {
