@@ -2,21 +2,7 @@
 
 export const GLOBAL_TELEGRAM_LINK = "https://t.me/ICSE_Class10_WPIV"
 
-export const LECTURE_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbiAIZ9t6XtTxBq9sYuSoKDwVLsFXLXXLWuH5tS1xqIW2fdVzHxsOZlZgSw1IVczwReCVtb8Eayi-H/pub?output=csv"
-
-// Sample fallback data for testing (Stein API format)
-export const SAMPLE_LECTURES = [
-  { Chapter: "Chapter 1: Motion", VideoTitle: "Introduction to Motion", YouTubeID: "dQw4w9WgXcQ", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Physics" },
-  { Chapter: "Chapter 1: Motion", VideoTitle: "Speed and Velocity", YouTubeID: "jNQXAC9IVRw", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Physics" },
-  { Chapter: "Chapter 2: Force", VideoTitle: "Newton's Laws", YouTubeID: "e8rrXUx3t0w", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Physics" },
-  { Chapter: "Chapter 1: Atoms", VideoTitle: "Atomic Structure", YouTubeID: "M7lc1BCxL00", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Chemistry" },
-  { Chapter: "Chapter 2: Bonding", VideoTitle: "Chemical Bonding Explained", YouTubeID: "9V6BIGaXVgc", NotesTelegramLink: "", Subject: "Chemistry" },
-  { Chapter: "Chapter 1: Cell", VideoTitle: "Cell Structure", YouTubeID: "URUJD5NEXC8", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Biology" },
-  { Chapter: "Chapter 2: Genetics", VideoTitle: "Mendel's Laws", YouTubeID: "Da-2h2B4faU", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Biology" },
-  { Chapter: "Chapter 1: Algebra", VideoTitle: "Quadratic Equations", YouTubeID: "zg-beSfuE80", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Maths" },
-  { Chapter: "Chapter 2: Geometry", VideoTitle: "Circle Theorems", YouTubeID: "fYDwJd-CtFc", NotesTelegramLink: "", Subject: "Maths" },
-]
+export const STEIN_HQ_ENDPOINT = "https://api.steinhq.com/v1/storages/6a5e2eb092b1163e971ede0f/Sheet1"
 
 // localStorage keys
 export const STORAGE_KEYS = {

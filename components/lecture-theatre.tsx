@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { LECTURE_CSV_URL, SAMPLE_LECTURES, parseCsv, rowsToLectures, stdinToLectures, type LectureRow } from "@/lib/icse"
+import { STEIN_HQ_ENDPOINT, stdinToLectures, type LectureRow } from "@/lib/icse"
 import { cn } from "@/lib/utils"
 
 type Status = "loading" | "ready" | "error"
@@ -33,32 +33,24 @@ export function LectureTheatre() {
 
     async function load() {
       try {
-        const res = await fetch(LECTURE_CSV_URL, { cache: "no-store" })
+        const res = await fetch(STEIN_HQ_ENDPOINT, { cache: "no-store" })
         if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-        const text = await res.text()
-        const rows = parseCsv(text)
-        let parsed = rowsToLectures(rows)
+        const data = await res.json()
         
-        // Fallback to sample data if CSV is empty or failed
-        if (parsed.length === 0) {
-          console.log("[v0] CSV empty, using sample data")
-          parsed = stdinToLectures(SAMPLE_LECTURES)
+        // Stein HQ returns an array directly
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid data format from Stein HQ")
         }
         
+        const parsed = stdinToLectures(data)
         if (cancelled) return
-        if (parsed.length === 0) throw new Error("No lectures found")
+        if (parsed.length === 0) throw new Error("No lectures found in storage")
 
         setLectures(parsed)
         setStatus("ready")
       } catch (error) {
-        console.log("[v0] Lecture CSV fetch error:", (error as Error).message)
-        console.log("[v0] Using sample data as fallback")
-        // Use sample data on error
-        const fallback = stdinToLectures(SAMPLE_LECTURES)
-        if (!cancelled) {
-          setLectures(fallback)
-          setStatus("ready")
-        }
+        console.log("[v0] Stein HQ fetch error:", (error as Error).message)
+        if (!cancelled) setStatus("error")
       }
     }
 
