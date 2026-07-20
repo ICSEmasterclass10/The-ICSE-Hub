@@ -1,18 +1,19 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { PlayCircle, Loader2, AlertTriangle, RefreshCw, Video } from "lucide-react"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Loader2,
+  AlertTriangle,
+  RefreshCw,
+  Video,
+  Play,
+  FileText,
+  Lock,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { NotesGateButton } from "@/components/notes-gate-button"
-import { LECTURE_CSV_URL, parseCsv, rowsToLectures, type LectureRow } from "@/lib/icse"
+import { Badge } from "@/components/ui/badge"
+import { STEIN_HQ_ENDPOINT, stdinToLectures, type LectureRow } from "@/lib/icse"
 import { cn } from "@/lib/utils"
 
 type Status = "loading" | "ready" | "error"
@@ -20,31 +21,35 @@ type Status = "loading" | "ready" | "error"
 export function LectureTheatre() {
   const [lectures, setLectures] = useState<LectureRow[]>([])
   const [status, setStatus] = useState<Status>("loading")
-  const [chapter, setChapter] = useState<string>("")
+  const [activeSubject, setActiveSubject] = useState<string>("All")
   const [activeVideo, setActiveVideo] = useState<LectureRow | null>(null)
+  const [showVideoModal, setShowVideoModal] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
+  // Fetch and parse CSV
   useEffect(() => {
     let cancelled = false
     setStatus("loading")
 
     async function load() {
       try {
-        const res = await fetch(LECTURE_CSV_URL, { cache: "no-store" })
+        const res = await fetch(STEIN_HQ_ENDPOINT, { cache: "no-store" })
         if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-        const text = await res.text()
-        const rows = parseCsv(text)
-        const parsed = rowsToLectures(rows)
+        const data = await res.json()
+        
+        // Stein HQ returns an array directly
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid data format from Stein HQ")
+        }
+        
+        const parsed = stdinToLectures(data)
         if (cancelled) return
-        if (parsed.length === 0) throw new Error("No lectures found in sheet")
+        if (parsed.length === 0) throw new Error("No lectures found in storage")
 
         setLectures(parsed)
-        const firstChapter = parsed[0].chapter
-        setChapter(firstChapter)
-        setActiveVideo(parsed.find((l) => l.chapter === firstChapter) ?? parsed[0])
         setStatus("ready")
       } catch (error) {
-        console.log("[v0] Lecture CSV fetch error:", (error as Error).message)
+        console.log("[v0] Stein HQ fetch error:", (error as Error).message)
         if (!cancelled) setStatus("error")
       }
     }
@@ -55,28 +60,37 @@ export function LectureTheatre() {
     }
   }, [reloadKey])
 
+  // Extract unique subjects dynamically
+  const subjects = useMemo(() => {
+    const seen = new Set<string>()
+    const unique: string[] = ["All"]
+    for (const l of lectures) {
+      if (!seen.has(l.subject)) {
+        seen.add(l.subject)
+        unique.push(l.subject)
+      }
+    }
+    return unique
+  }, [lectures])
+
+  // Filter lectures by active subject
+  const filteredLectures = useMemo(() => {
+    if (activeSubject === "All") return lectures
+    return lectures.filter((l) => l.subject === activeSubject)
+  }, [lectures, activeSubject])
+
+  // Extract unique chapters from filtered lectures
   const chapters = useMemo(() => {
     const seen = new Set<string>()
     const unique: string[] = []
-    for (const l of lectures) {
+    for (const l of filteredLectures) {
       if (!seen.has(l.chapter)) {
         seen.add(l.chapter)
         unique.push(l.chapter)
       }
     }
     return unique
-  }, [lectures])
-
-  const chapterVideos = useMemo(
-    () => lectures.filter((l) => l.chapter === chapter),
-    [lectures, chapter],
-  )
-
-  function handleChapterChange(value: string) {
-    setChapter(value)
-    const first = lectures.find((l) => l.chapter === value)
-    if (first) setActiveVideo(first)
-  }
+  }, [filteredLectures])
 
   if (status === "loading") {
     return (
@@ -111,36 +125,148 @@ export function LectureTheatre() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Chapter selector */}
-      <div className="flex flex-col gap-2 sm:max-w-sm">
-        <label className="text-sm font-medium text-foreground">Select Chapter</label>
-        <Select value={chapter} onValueChange={handleChapterChange}>
-          <SelectTrigger className="h-11">
-            <SelectValue placeholder="Choose a chapter" />
-          </SelectTrigger>
-          <SelectContent>
-            {chapters.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="flex flex-col gap-6">
+      {/* Subject Filter Tabs */}
+      <div className="flex flex-col gap-3">
+        <p className="text-sm font-medium text-foreground">Filter by Subject</p>
+        <div className="flex flex-wrap gap-2">
+          {subjects.map((subject) => (
+            <button
+              key={subject}
+              type="button"
+              onClick={() => {
+                setActiveSubject(subject)
+                setActiveVideo(null)
+              }}
+              className={cn(
+                "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                activeSubject === subject
+                  ? "bg-gold text-gold-foreground"
+                  : "border border-border bg-card text-foreground hover:bg-secondary",
+              )}
+            >
+              {subject}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_22rem]">
-        {/* Video player */}
-        <div className="flex flex-col gap-4">
-          <div className="overflow-hidden rounded-xl border border-border bg-navy shadow-sm">
-            <div className="relative aspect-video w-full">
-              {activeVideo?.youTubeId ? (
+      {/* Chapters grouped as mobile action cards */}
+      <div className="grid gap-3 sm:gap-4">
+        {chapters.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card p-8 text-center">
+            <p className="text-muted-foreground">No lectures available for this subject.</p>
+          </div>
+        ) : (
+          chapters.map((chapter) => {
+            const chapterLectures = filteredLectures.filter((l) => l.chapter === chapter)
+            return (
+              <div
+                key={chapter}
+                className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 shadow-sm"
+              >
+                <div className="mb-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+                    {chapter}
+                  </p>
+                </div>
+
+                {/* Chapter lectures as stacked mobile cards */}
+                <div className="flex flex-col gap-2">
+                  {chapterLectures.map((lecture, idx) => (
+                    <div
+                      key={`${lecture.youTubeId}-${idx}`}
+                      className="flex flex-col gap-2 rounded-lg border border-border/50 bg-secondary/30 p-3"
+                    >
+                      <h3 className="line-clamp-2 text-sm font-medium text-foreground">
+                        {lecture.videoTitle}
+                      </h3>
+
+                      {/* Action buttons */}
+                      <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setActiveVideo(lecture)
+                            setShowVideoModal(true)
+                          }}
+                          className="flex-1 bg-gold font-semibold text-gold-foreground hover:bg-gold/90"
+                        >
+                          <Play className="size-4" aria-hidden="true" />
+                          Watch Lecture
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (lecture.notesTelegramLink) {
+                              window.open(lecture.notesTelegramLink, "_blank")
+                            }
+                          }}
+                          disabled={!lecture.notesTelegramLink}
+                          variant={lecture.notesTelegramLink ? "outline" : "outline"}
+                          className={cn(
+                            "flex-1 border-border text-foreground",
+                            lecture.notesTelegramLink
+                              ? "hover:bg-secondary"
+                              : "opacity-50 cursor-not-allowed",
+                          )}
+                        >
+                          {lecture.notesTelegramLink ? (
+                            <>
+                              <FileText className="size-4" aria-hidden="true" />
+                              View Notes
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="size-3.5" aria-hidden="true" />
+                              <span className="text-xs">Coming Soon</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Video Modal */}
+      {showVideoModal && activeVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-card shadow-lg">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-gold">
+                  {activeVideo.chapter}
+                </p>
+                <h2 className="mt-1 text-sm font-semibold text-foreground sm:text-base">
+                  {activeVideo.videoTitle}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowVideoModal(false)}
+                className="text-2xl text-muted-foreground hover:text-foreground"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Video Player */}
+            <div className="relative aspect-video w-full bg-navy">
+              {activeVideo.youTubeId ? (
                 <iframe
                   key={activeVideo.youTubeId}
                   className="absolute inset-0 size-full"
-                  src={`https://www.youtube.com/embed/${activeVideo.youTubeId}`}
+                  src={`https://www.youtube-nocookie.com/embed/${activeVideo.youTubeId}`}
                   title={activeVideo.videoTitle}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
               ) : (
@@ -149,71 +275,26 @@ export function LectureTheatre() {
                 </div>
               )}
             </div>
-          </div>
 
-          {activeVideo && (
-            <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-gold">
-                  {activeVideo.chapter}
-                </p>
-                <h2 className="text-pretty text-base font-semibold text-foreground">
-                  {activeVideo.videoTitle}
-                </h2>
+            {/* Footer with Notes button */}
+            {activeVideo.notesTelegramLink && (
+              <div className="border-t border-border px-4 py-3 sm:px-6 sm:py-4">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    window.open(activeVideo.notesTelegramLink, "_blank")
+                    setShowVideoModal(false)
+                  }}
+                  className="w-full bg-gold font-semibold text-gold-foreground hover:bg-gold/90"
+                >
+                  <FileText className="size-4" aria-hidden="true" />
+                  View Notes on Telegram
+                </Button>
               </div>
-              <NotesGateButton telegramLink={activeVideo.notesTelegramLink} className="shrink-0" />
-            </div>
-          )}
-        </div>
-
-        {/* Video list */}
-        <div className="flex flex-col rounded-xl border border-border bg-card shadow-sm">
-          <div className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold text-foreground">
-              Lectures
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                {chapterVideos.length} videos
-              </span>
-            </h3>
+            )}
           </div>
-          <ScrollArea className="h-[18rem] lg:h-[26rem]">
-            <ul className="flex flex-col p-2">
-              {chapterVideos.map((video, idx) => {
-                const active = activeVideo?.videoTitle === video.videoTitle &&
-                  activeVideo?.youTubeId === video.youTubeId
-                return (
-                  <li key={`${video.youTubeId}-${idx}`}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveVideo(video)}
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
-                        active ? "bg-gold/15" : "hover:bg-secondary",
-                      )}
-                    >
-                      <PlayCircle
-                        className={cn(
-                          "size-5 shrink-0",
-                          active ? "text-gold" : "text-muted-foreground",
-                        )}
-                        aria-hidden="true"
-                      />
-                      <span
-                        className={cn(
-                          "line-clamp-2 text-sm",
-                          active ? "font-medium text-foreground" : "text-foreground/80",
-                        )}
-                      >
-                        {video.videoTitle}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </ScrollArea>
         </div>
-      </div>
+      )}
     </div>
   )
 }
