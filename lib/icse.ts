@@ -5,6 +5,19 @@ export const GLOBAL_TELEGRAM_LINK = "https://t.me/ICSE_Class10_WPIV"
 export const LECTURE_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbiAIZ9t6XtTxBq9sYuSoKDwVLsFXLXXLWuH5tS1xqIW2fdVzHxsOZlZgSw1IVczwReCVtb8Eayi-H/pub?output=csv"
 
+// Sample fallback data for testing (Stein API format)
+export const SAMPLE_LECTURES = [
+  { Chapter: "Chapter 1: Motion", VideoTitle: "Introduction to Motion", YouTubeID: "dQw4w9WgXcQ", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Physics" },
+  { Chapter: "Chapter 1: Motion", VideoTitle: "Speed and Velocity", YouTubeID: "jNQXAC9IVRw", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Physics" },
+  { Chapter: "Chapter 2: Force", VideoTitle: "Newton's Laws", YouTubeID: "e8rrXUx3t0w", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Physics" },
+  { Chapter: "Chapter 1: Atoms", VideoTitle: "Atomic Structure", YouTubeID: "M7lc1BCxL00", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Chemistry" },
+  { Chapter: "Chapter 2: Bonding", VideoTitle: "Chemical Bonding Explained", YouTubeID: "9V6BIGaXVgc", NotesTelegramLink: "", Subject: "Chemistry" },
+  { Chapter: "Chapter 1: Cell", VideoTitle: "Cell Structure", YouTubeID: "URUJD5NEXC8", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Biology" },
+  { Chapter: "Chapter 2: Genetics", VideoTitle: "Mendel's Laws", YouTubeID: "Da-2h2B4faU", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Biology" },
+  { Chapter: "Chapter 1: Algebra", VideoTitle: "Quadratic Equations", YouTubeID: "zg-beSfuE80", NotesTelegramLink: "https://t.me/ICSE_Class10_WPIV", Subject: "Maths" },
+  { Chapter: "Chapter 2: Geometry", VideoTitle: "Circle Theorems", YouTubeID: "fYDwJd-CtFc", NotesTelegramLink: "", Subject: "Maths" },
+]
+
 // localStorage keys
 export const STORAGE_KEYS = {
   profile: "icsehub:profile",
@@ -59,6 +72,7 @@ export interface LectureRow {
   videoTitle: string
   youTubeId: string
   notesTelegramLink: string
+  subject: string
 }
 
 export const DEFAULT_CHECKLIST_ITEMS: ChecklistItem[] = [
@@ -126,28 +140,71 @@ export function parseCsv(text: string): string[][] {
 }
 
 /**
- * Extracts a clean YouTube video id from a raw cell that may contain a full
- * URL or just the id.
+ * Bulletproof YouTube ID extraction with URL parameter stripping and validation.
+ * Handles:
+ *   - Full URLs (youtube.com/watch?v=, youtu.be/, youtube.com/embed/)
+ *   - URL parameters (?si=..., &t=..., etc.)
+ *   - Bare 11-character IDs
+ *   - Invalid entries (returns empty string gracefully)
  */
 export function extractYouTubeId(raw: string): string {
-  const value = (raw || "").trim()
+  if (!raw || typeof raw !== "string") return ""
+  
+  let value = raw.trim()
   if (!value) return ""
+  
+  // Remove query parameters and fragments
+  const hashIdx = value.indexOf("#")
+  if (hashIdx !== -1) value = value.slice(0, hashIdx)
+  
+  const qIdx = value.indexOf("?")
+  if (qIdx !== -1) value = value.slice(0, qIdx)
+  
+  // Pattern matching for different URL formats
   const patterns = [
     /(?:youtube\.com\/watch\?v=)([\w-]{11})/,
     /(?:youtu\.be\/)([\w-]{11})/,
     /(?:youtube\.com\/embed\/)([\w-]{11})/,
+    /(?:youtube\.com\/v\/)([\w-]{11})/,
   ]
+  
   for (const p of patterns) {
     const match = value.match(p)
-    if (match) return match[1]
+    if (match) {
+      const id = match[1]
+      // Validate it's exactly 11 characters and contains only word chars or hyphens
+      if (/^[\w-]{11}$/.test(id)) return id
+    }
   }
-  // already an id
-  return value
+  
+  // If it looks like a bare ID (11 chars, word chars + hyphen)
+  if (/^[\w-]{11}$/.test(value)) return value
+  
+  // Invalid entry—return empty string instead of crashing
+  return ""
+}
+
+/**
+ * Converts Stein API (capital-letter keys) to LectureRow format.
+ */
+export function stdinToLectures(
+  data: Array<{ Chapter?: string; VideoTitle?: string; YouTubeID?: string; NotesTelegramLink?: string; Subject?: string }>,
+): LectureRow[] {
+  return data
+    .map((row) => ({
+      chapter: (row.Chapter || "").trim(),
+      videoTitle: (row.VideoTitle || "").trim(),
+      youTubeId: extractYouTubeId(row.YouTubeID || ""),
+      notesTelegramLink: (row.NotesTelegramLink || "").trim(),
+      subject: (row.Subject || "General").trim(),
+    }))
+    .filter((r) => r.chapter && r.videoTitle && r.youTubeId)
 }
 
 /**
  * Maps parsed CSV rows into LectureRow objects. The header row is used to
  * locate columns; falls back to positional mapping if headers are absent.
+ * Includes Subject field for dynamic tab filtering.
  */
 export function rowsToLectures(rows: string[][]): LectureRow[] {
   if (rows.length === 0) return []
@@ -160,6 +217,7 @@ export function rowsToLectures(rows: string[][]): LectureRow[] {
   const titleIdx = findIndex("videotitle", "title", "video")
   const idIdx = findIndex("youtubeid", "youtube", "video id", "videoid", "id", "link")
   const notesIdx = findIndex("notestelegram", "telegram", "notes")
+  const subjectIdx = findIndex("subject")
 
   const hasHeader = chapterIdx !== -1 || titleIdx !== -1
   const dataRows = hasHeader ? rows.slice(1) : rows
@@ -170,12 +228,14 @@ export function rowsToLectures(rows: string[][]): LectureRow[] {
       const videoTitle = (cols[hasHeader && titleIdx !== -1 ? titleIdx : 1] || "").trim()
       const rawId = (cols[hasHeader && idIdx !== -1 ? idIdx : 2] || "").trim()
       const notesTelegramLink = (cols[hasHeader && notesIdx !== -1 ? notesIdx : 3] || "").trim()
+      const subject = (cols[hasHeader && subjectIdx !== -1 ? subjectIdx : 4] || "").trim() || "General"
       return {
         chapter,
         videoTitle,
         youTubeId: extractYouTubeId(rawId),
         notesTelegramLink,
+        subject,
       }
     })
-    .filter((r) => r.chapter && r.videoTitle)
+    .filter((r) => r.chapter && r.videoTitle && r.youTubeId)
 }

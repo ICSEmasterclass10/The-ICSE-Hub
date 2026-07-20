@@ -175,40 +175,49 @@ export function FocusEngine() {
         </div>
       </div>
 
-      {/* Circular timer */}
-      <div className="relative flex size-[300px] items-center justify-center">
-        <svg className="size-full -rotate-90" viewBox="0 0 300 300" aria-hidden="true">
+      {/* Circular timer with SVG progress ring */}
+      <div className="relative flex size-[320px] items-center justify-center">
+        <svg
+          className="size-full -rotate-90"
+          viewBox="0 0 300 300"
+          aria-hidden="true"
+          style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))" }}
+        >
+          {/* Background ring */}
           <circle
             cx="150"
             cy="150"
             r={RADIUS}
             fill="none"
             stroke="var(--border)"
-            strokeWidth="14"
+            strokeWidth="12"
+            opacity="0.5"
           />
+          {/* Golden progress ring */}
           <circle
             cx="150"
             cy="150"
             r={RADIUS}
             fill="none"
             stroke="var(--gold)"
-            strokeWidth="14"
+            strokeWidth="12"
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
             strokeDashoffset={dashOffset}
             className="transition-[stroke-dashoffset] duration-1000 ease-linear"
+            style={{ filter: "drop-shadow(0 0 8px rgba(255,193,7,0.3))" }}
           />
         </svg>
-        <div className="absolute flex flex-col items-center">
+        <div className="absolute flex flex-col items-center gap-2">
           <span className="font-mono text-6xl font-bold tabular-nums text-navy">
             {format(secondsLeft)}
           </span>
-          <span className="mt-1 text-sm text-muted-foreground">
+          <span className="text-sm font-medium text-muted-foreground">
             {justFinished
-              ? "Session complete!"
+              ? "✓ Session complete!"
               : isRunning
-                ? "Stay focused"
-                : `${activeMinutes} minute session`}
+                ? "▶ Stay focused"
+                : `⏱ ${activeMinutes} min session`}
           </span>
         </div>
       </div>
