@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
   verification: {
     google: 'XoBnGavN1YlsIka6AgjgXplREYGYS-0qIOlX94m7MS0',
+    pinterest: 'bbe7aa50ed21ae3a94d83f6a9c89fe09',
   },
   openGraph: {
     title: 'The ICSE Hub | Complete Class 10 Study Dashboard',
