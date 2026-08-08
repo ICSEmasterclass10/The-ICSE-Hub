@@ -9,11 +9,22 @@ import {
   Play,
   FileText,
   Lock,
+  Cloud,
+  CloudOff,
+  Copy,
+  Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { STEIN_HQ_ENDPOINT, stdinToLectures, type LectureRow } from "@/lib/icse"
+import { useLocalStorage } from "@/hooks/use-local-storage"
+import { STORAGE_KEYS, STEIN_HQ_ENDPOINT, stdinToLectures, type LectureRow } from "@/lib/icse"
+import {
+  createProgressSync,
+  generateSyncCode,
+  loadProgressSync,
+  updateProgressSync,
+} from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
 type Status = "loading" | "ready" | "error"
@@ -25,6 +36,80 @@ export function LectureTheatre() {
   const [activeVideo, setActiveVideo] = useState<LectureRow | null>(null)
   const [showVideoModal, setShowVideoModal] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [completedIds, setCompletedIds] = useLocalStorage<string[]>(STORAGE_KEYS.completedLectures, [])
+  const [syncCode, setSyncCode] = useLocalStorage<string>(STORAGE_KEYS.syncCode, "")
+  const [syncInput, setSyncInput] = useState("")
+  const [syncMessage, setSyncMessage] = useState("")
+  const [syncBusy, setSyncBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const toggleCompleted = async (lecture: LectureRow) => {
+    const id = lecture.youTubeId
+    const next = completedIds.includes(id)
+      ? completedIds.filter((item) => item !== id)
+      : [...completedIds, id]
+    setCompletedIds(next)
+    if (syncCode) {
+      try {
+        const { error } = await updateProgressSync(syncCode, next)
+        if (error) throw error
+      } catch (error) {
+        console.log("[v0] Progress sync update failed; local progress retained:", (error as Error).message)
+      }
+    }
+  }
+
+  const createSync = async () => {
+    setSyncBusy(true)
+    setSyncMessage("")
+    const code = generateSyncCode()
+    try {
+      const { error } = await createProgressSync(code, completedIds)
+      if (error) throw error
+      setSyncCode(code)
+      setSyncMessage("Sync code created. Save it to use on another device.")
+    } catch (error) {
+      console.log("[v0] Progress sync creation failed:", (error as Error).message)
+      setSyncMessage("Couldn’t connect to sync right now. Your local progress is safe.")
+    } finally {
+      setSyncBusy(false)
+    }
+  }
+
+  const loadSync = async () => {
+    const code = syncInput.trim()
+    if (!/^\\d{6}$/.test(code)) {
+      setSyncMessage("Invalid Sync Code. Please check and try again.")
+      return
+    }
+    setSyncBusy(true)
+    setSyncMessage("")
+    try {
+      const { data, error } = await loadProgressSync(code)
+      if (error) throw error
+      if (!data) {
+        setSyncMessage("Invalid Sync Code. Please check and try again.")
+        return
+      }
+      const incoming = Array.isArray(data.completed_ids) ? data.completed_ids : []
+      setCompletedIds(incoming)
+      setSyncCode(code)
+      setSyncInput("")
+      setSyncMessage("Progress loaded successfully.")
+    } catch (error) {
+      console.log("[v0] Progress sync load failed; local progress retained:", (error as Error).message)
+      setSyncMessage("Couldn’t connect to sync right now. Your local progress is safe.")
+    } finally {
+      setSyncBusy(false)
+    }
+  }
+
+  const copySyncCode = async () => {
+    if (!syncCode) return
+    await navigator.clipboard.writeText(syncCode)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
 
   // Fetch and parse CSV
   useEffect(() => {
@@ -126,6 +211,36 @@ export function LectureTheatre() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Cross-device progress sync */}
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-labelledby="sync-heading">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              {syncCode ? <Cloud className="size-4 text-gold" aria-hidden="true" /> : <CloudOff className="size-4 text-muted-foreground" aria-hidden="true" />}
+              <h2 id="sync-heading" className="font-semibold text-foreground">Cross-device progress</h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">Keep completed lectures in sync across your devices.</p>
+          </div>
+          <Button type="button" onClick={createSync} disabled={syncBusy} className="bg-gold font-semibold text-gold-foreground hover:bg-gold/90">
+            {syncBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Cloud className="size-4" aria-hidden="true" />}
+            Generate Sync Code
+          </Button>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {syncCode && (
+            <button type="button" onClick={copySyncCode} className="flex items-center justify-between gap-3 rounded-lg border border-gold/60 bg-gold/10 px-3 py-2 font-mono text-lg font-bold tracking-[0.25em] text-navy" aria-label="Copy active sync code">
+              {syncCode}
+              {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
+            </button>
+          )}
+          <div className="flex flex-1 gap-2">
+            <input value={syncInput} onChange={(event) => setSyncInput(event.target.value.replace(/\\D/g, "").slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="Enter 6-digit code" aria-label="Existing six-digit sync code" className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 font-mono tracking-[0.2em] outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring" />
+            <Button type="button" variant="outline" onClick={loadSync} disabled={syncBusy || syncInput.length !== 6}>Load Code</Button>
+          </div>
+        </div>
+        {syncMessage && <p className="mt-3 text-sm text-muted-foreground" role="status">{syncMessage}</p>}
+      </section>
+
       {/* Subject Filter Tabs */}
       <div className="flex flex-col gap-3">
         <p className="text-sm font-medium text-foreground">Filter by Subject</p>
@@ -181,6 +296,10 @@ export function LectureTheatre() {
                       <h3 className="line-clamp-2 text-sm font-medium text-foreground">
                         {lecture.videoTitle}
                       </h3>
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                        <input type="checkbox" checked={completedIds.includes(lecture.youTubeId)} onChange={() => toggleCompleted(lecture)} className="size-4 accent-[var(--gold)]" />
+                        <span className={cn(completedIds.includes(lecture.youTubeId) && "text-gold line-through")}>Mark as Completed</span>
+                      </label>
 
                       {/* Action buttons */}
                       <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">

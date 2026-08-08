@@ -12,6 +12,8 @@ export const STORAGE_KEYS = {
   checklist: "icsehub:dailyChecklist",
   notes: "icsehub:notes",
   trash: "icsehub:trash",
+  syncCode: "icsehub:syncCode",
+  completedLectures: "icsehub:completedLectures",
 } as const
 
 export type Tab = "focus" | "notes" | "lectures"
