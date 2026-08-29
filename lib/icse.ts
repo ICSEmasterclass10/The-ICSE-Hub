@@ -1,8 +1,13 @@
 // Shared types, constants and helpers for The ICSE Hub
 
-export const GLOBAL_TELEGRAM_LINK = "https://t.me/ICSE_Class10_WPIV"
+export const GLOBAL_TELEGRAM_LINK = "https://t.me/ICSEMasterClass10"
 
-export const STEIN_HQ_ENDPOINT = "https://api.steinhq.com/v1/storages/6a5e2eb092b1163e971ede0f/Sheet1"
+export const LECTURE_SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbiAIZ9t6XtTxBq9sYuSoKDwVLsFXLXXLWuH5tS1xqIW2fdVzHxsOZlZgSw1IVczwReCVtb8Eayi-H/pubhtml"
+
+// Published Google Sheets data endpoint derived from the provided pubhtml URL.
+export const LECTURE_SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQbiAIZ9t6XtTxBq9sYuSoKDwVLsFXLXXLWuH5tS1xqIW2fdVzHxsOZlZgSw1IVczwReCVtb8Eayi-H/pub?output=csv"
 
 // localStorage keys
 export const STORAGE_KEYS = {
@@ -59,6 +64,16 @@ export interface LectureRow {
   youTubeId: string
   notesTelegramLink: string
   subject: string
+  isPYQ: boolean
+}
+
+export interface LectureCsvRow {
+  Chapter?: string
+  VideoTitle?: string
+  YouTubeID?: string
+  NotesTelegramLink?: string
+  Subject?: string
+  IsPYQ?: string
 }
 
 export const DEFAULT_CHECKLIST_ITEMS: ChecklistItem[] = [
@@ -173,16 +188,15 @@ export function extractYouTubeId(raw: string): string {
 /**
  * Converts Stein API (capital-letter keys) to LectureRow format.
  */
-export function stdinToLectures(
-  data: Array<{ Chapter?: string; VideoTitle?: string; YouTubeID?: string; NotesTelegramLink?: string; Subject?: string }>,
-): LectureRow[] {
+export function stdinToLectures(data: LectureCsvRow[]): LectureRow[] {
   return data
     .map((row) => ({
       chapter: (row.Chapter || "").trim(),
       videoTitle: (row.VideoTitle || "").trim(),
       youTubeId: extractYouTubeId(row.YouTubeID || ""),
       notesTelegramLink: (row.NotesTelegramLink || "").trim(),
-      subject: (row.Subject || "General").trim(),
+      subject: (row.Subject || "General").trim() || "General",
+      isPYQ: /^(true|yes|1)$/i.test((row.IsPYQ || "").trim()),
     }))
     .filter((r) => r.chapter && r.videoTitle && r.youTubeId)
 }
@@ -221,6 +235,7 @@ export function rowsToLectures(rows: string[][]): LectureRow[] {
         youTubeId: extractYouTubeId(rawId),
         notesTelegramLink,
         subject,
+        isPYQ: /^(true|yes|1)$/i.test((cols[hasHeader && findIndex("ispyq") !== -1 ? findIndex("ispyq") : 5] || "").trim()),
       }
     })
     .filter((r) => r.chapter && r.videoTitle && r.youTubeId)
