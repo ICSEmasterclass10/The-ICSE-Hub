@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { STEIN_HQ_ENDPOINT, stdinToLectures, type LectureRow } from "@/lib/icse"
+import { LazyYouTube } from "@/components/lazy-youtube"
 import { cn } from "@/lib/utils"
 
 type Status = "loading" | "ready" | "error"
@@ -261,14 +262,7 @@ export function LectureTheatre() {
             {/* Video Player */}
             <div className="relative aspect-video w-full bg-navy">
               {activeVideo.youTubeId ? (
-                <iframe
-                  key={activeVideo.youTubeId}
-                  className="absolute inset-0 size-full"
-                  src={`https://www.youtube-nocookie.com/embed/${activeVideo.youTubeId}`}
-                  title={activeVideo.videoTitle}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+                <LazyYouTube videoId={activeVideo.youTubeId} title={activeVideo.videoTitle} />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-navy-foreground/60">
                   <Video className="size-10" aria-hidden="true" />
