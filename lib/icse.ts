@@ -1,6 +1,6 @@
 // Shared types, constants and helpers for The ICSE Hub
 
-export const GLOBAL_TELEGRAM_LINK = "https://t.me/ICSE_Class10_WPIV"
+export const GLOBAL_TELEGRAM_LINK = "https://t.me/ICSEMasterClass10"
 
 export const STEIN_HQ_ENDPOINT = "https://api.steinhq.com/v1/storages/6a5e2eb092b1163e971ede0f/Sheet1"
 

@@ -18,7 +18,7 @@ export function SeoContent() {
           <nav aria-label="ICSE Hub resources">
             <h3 className="font-semibold text-foreground">Resources map</h3>
             <ul className="mt-3 grid gap-2">
-              {RESOURCE_LINKS.map((resource) => <li key={resource.label}>{resource.href.startsWith("/") ? <Link href={resource.href} className="block rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:bg-secondary"><span className="text-sm font-medium text-navy">{resource.label}</span><span className="block text-xs text-muted-foreground">{resource.description}</span></Link> : <a href={resource.href} target="_blank" rel="noreferrer" className="block rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:bg-secondary"><span className="text-sm font-medium text-navy">{resource.label}</span><span className="block text-xs text-muted-foreground">{resource.description}</span></a>}</li>)}
+              {RESOURCE_LINKS.map((resource) => <li key={resource.label}>{resource.href.startsWith("/") ? <Link href={resource.href} className="block rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:bg-secondary"><span className="text-sm font-medium text-navy">{resource.label}</span><span className="block text-xs text-muted-foreground">{resource.description}</span></Link> : <a href={resource.href} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:bg-secondary"><span className="text-sm font-medium text-navy">{resource.label}</span><span className="block text-xs text-muted-foreground">{resource.description}</span></a>}</li>)}
             </ul>
           </nav>
         </div>

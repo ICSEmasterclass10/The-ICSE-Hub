@@ -38,7 +38,7 @@ export const RESOURCE_LINKS = [
   { label: "Focus Engine", href: "/#focus", description: "Build a consistent study routine with focused sessions." },
   { label: "Notes Vault", href: "/#notes", description: "Organise revision tasks and study notes." },
   { label: "Lecture Theatre", href: "/#lectures", description: "Browse live, chapter-wise ICSE lectures." },
-  { label: "ICSE Hub Telegram", href: "https://t.me/ICSE_Class10_WPIV", description: "Join the student community for announcements and notes." },
+  { label: "ICSE Hub Telegram", href: "https://t.me/ICSEMasterClass10", description: "Join the student community for announcements and notes." },
 ] as const
 
 export function createVideoObjectJsonLd() {
