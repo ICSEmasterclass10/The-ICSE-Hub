@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { STEIN_HQ_ENDPOINT, stdinToLectures, type LectureRow } from "@/lib/icse"
+import { LECTURE_SHEET_CSV_URL, parseCsv, rowsToLectures, type LectureRow } from "@/lib/icse"
 import { LazyYouTube } from "@/components/lazy-youtube"
 import { cn } from "@/lib/utils"
 
@@ -34,16 +34,10 @@ export function LectureTheatre() {
 
     async function load() {
       try {
-        const res = await fetch(STEIN_HQ_ENDPOINT, { cache: "no-store" })
+        const res = await fetch(LECTURE_SHEET_CSV_URL, { cache: "no-store" })
         if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-        const data = await res.json()
-        
-        // Stein HQ returns an array directly
-        if (!Array.isArray(data)) {
-          throw new Error("Invalid data format from Stein HQ")
-        }
-        
-        const parsed = stdinToLectures(data)
+        const csv = await res.text()
+        const parsed = rowsToLectures(parseCsv(csv))
         if (cancelled) return
         if (parsed.length === 0) throw new Error("No lectures found in storage")
 
