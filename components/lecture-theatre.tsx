@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Papa from "papaparse"
 import {
   Loader2,
   AlertTriangle,
@@ -13,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { LECTURE_SHEET_CSV_URL, parseCsv, rowsToLectures, type LectureRow } from "@/lib/icse"
+import { LECTURE_SHEET_CSV_URL, stdinToLectures, type LectureCsvRow, type LectureRow } from "@/lib/icse"
 import { LazyYouTube } from "@/components/lazy-youtube"
 import { cn } from "@/lib/utils"
 
@@ -37,7 +38,15 @@ export function LectureTheatre() {
         const res = await fetch(LECTURE_SHEET_CSV_URL, { cache: "no-store" })
         if (!res.ok) throw new Error(`Request failed: ${res.status}`)
         const csv = await res.text()
-        const parsed = rowsToLectures(parseCsv(csv))
+        const result = Papa.parse<LectureCsvRow>(csv, {
+          header: true,
+          skipEmptyLines: "greedy",
+          transformHeader: (header) => header.trim(),
+        })
+        if (result.errors.length > 0) {
+          console.log("[v0] CSV parse warnings:", result.errors)
+        }
+        const parsed = stdinToLectures(result.data)
         if (cancelled) return
         if (parsed.length === 0) throw new Error("No lectures found in storage")
 
