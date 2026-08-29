@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import Papa from "papaparse"
 import {
   Loader2,
   AlertTriangle,
@@ -14,8 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { LECTURE_SHEET_CSV_URL, stdinToLectures, type LectureCsvRow, type LectureRow } from "@/lib/icse"
-import { LazyYouTube } from "@/components/lazy-youtube"
+import { STEIN_HQ_ENDPOINT, stdinToLectures, type LectureRow } from "@/lib/icse"
 import { cn } from "@/lib/utils"
 
 type Status = "loading" | "ready" | "error"
@@ -35,18 +33,16 @@ export function LectureTheatre() {
 
     async function load() {
       try {
-        const res = await fetch(LECTURE_SHEET_CSV_URL, { cache: "no-store" })
+        const res = await fetch(STEIN_HQ_ENDPOINT, { cache: "no-store" })
         if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-        const csv = await res.text()
-        const result = Papa.parse<LectureCsvRow>(csv, {
-          header: true,
-          skipEmptyLines: "greedy",
-          transformHeader: (header) => header.trim(),
-        })
-        if (result.errors.length > 0) {
-          console.log("[v0] CSV parse warnings:", result.errors)
+        const data = await res.json()
+        
+        // Stein HQ returns an array directly
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid data format from Stein HQ")
         }
-        const parsed = stdinToLectures(result.data)
+        
+        const parsed = stdinToLectures(data)
         if (cancelled) return
         if (parsed.length === 0) throw new Error("No lectures found in storage")
 
@@ -265,7 +261,14 @@ export function LectureTheatre() {
             {/* Video Player */}
             <div className="relative aspect-video w-full bg-navy">
               {activeVideo.youTubeId ? (
-                <LazyYouTube videoId={activeVideo.youTubeId} title={activeVideo.videoTitle} />
+                <iframe
+                  key={activeVideo.youTubeId}
+                  className="absolute inset-0 size-full"
+                  src={`https://www.youtube-nocookie.com/embed/${activeVideo.youTubeId}`}
+                  title={activeVideo.videoTitle}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-navy-foreground/60">
                   <Video className="size-10" aria-hidden="true" />
